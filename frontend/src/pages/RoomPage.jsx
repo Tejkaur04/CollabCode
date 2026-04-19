@@ -67,7 +67,7 @@ useEffect(() => {
 
   socket.on("connect", () => console.log("✅ Socket connected:", socket.id));
   socket.on("connect_error", (err) => console.log("❌ Connection error:", err.message));
-  console.log("BASE_URL is:", BASE_URL);
+  // console.log("BASE_URL is:", BASE_URL);
 
   const handleConnect = () => {
     const resolvedName = stateName || localStorage.getItem("username") || `Guest-${socket.id?.slice(0, 5)}`;
