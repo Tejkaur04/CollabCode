@@ -11,10 +11,21 @@ const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server, { cors: { origin: "https://collab-code-virid.vercel.app" } });
+// const io = new Server(server, { cors: { origin: "https://collab-code-virid.vercel.app" } });\
+const ALLOWED_ORIGINS = [
+  "https://collab-code-virid.vercel.app",
+  "http://localhost:5173",  // local dev
+];
+
+const io = new Server(server, {
+  cors: {
+    origin: ALLOWED_ORIGINS,
+    methods: ["GET", "POST"],
+  },
+});
 
 // ----------------- Middleware -----------------
-app.use(cors());
+app.use(cors({origin:ALLOWED_ORIGINS}));
 app.use(express.json());
 
 // ----------------- Judge0 Setup -----------------
@@ -222,9 +233,12 @@ io.on("connection", (socket) => {
   console.log("User connected:", socket.id);
 
 socket.on("join-room", ({ roomId, name }) => {
+  console.log("join-room received — roomId:", roomId, "name:", name); // ADD THIS
   if (!rooms[roomId]) rooms[roomId] = {};
   rooms[roomId][socket.id] = name || `Guest-${socket.id.slice(0, 5)}`;
   socket.join(roomId);
+
+  socket.to(roomId).emit("user-joined", rooms[roomId][socket.id]);
 
   // Send existing code and language to new user
   if (roomCode[roomId]) {
@@ -253,7 +267,9 @@ socket.on("language-change", ({ roomId, language }) => {
   socket.on("disconnect", () => {
     for (const roomId in rooms) {
       if (rooms[roomId][socket.id]) {
+        const leftUser = rooms[roomId][socket.id];
         delete rooms[roomId][socket.id];
+        socket.to(roomId).emit("user-left", leftUser);
         io.to(roomId).emit("room-users", Object.values(rooms[roomId]));
       }
     }

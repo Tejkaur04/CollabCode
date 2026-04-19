@@ -53,7 +53,7 @@ export default function LandingPage() {
     google.accounts.id.renderButton(document.getElementById("google-btn"), {
       theme: "filled_blue",
       size: "large",
-      width: "90%",
+      width: "100%",
 
 
     });

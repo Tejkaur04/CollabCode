@@ -18,7 +18,8 @@ import {
   AlertCircle,
 } from "lucide-react";
 
-const socket = io(import.meta.env.VITE_BACKEND_URL);
+const BASE_URL = import.meta.env.VITE_BACKEND_URL;
+
 
 
 function RoomPage({  isDark , setIsDark }) {
@@ -57,46 +58,54 @@ function RoomPage({  isDark , setIsDark }) {
 
   const editorRef = useRef(null);
   const monacoRef = useRef(null);
+  const socketRef = useRef(null);
 
   // ------------------ SOCKET EFFECT ------------------
-  useEffect(() => {
-    // Wire up server events
-    socket.on("code-update", setCode);
-    socket.on("language-update", setLanguage);
+useEffect(() => {
+  socketRef.current = io(BASE_URL);
+  const socket = socketRef.current;
 
-    // room-users can be an array (preferred) or sometimes something else;
-    // we handle both shapes defensively
-    socket.on("room-users", (payload) => {
-      if (Array.isArray(payload)) {
-        setRoomUsers(payload);
-        setUsersCount(payload.length);
-      } else if (payload && Array.isArray(payload.users)) {
-        setRoomUsers(payload.users);
-        setUsersCount(payload.users.length);
-      } else if (typeof payload === "number") {
-        // legacy: server might have emitted a count
-        setUsersCount(payload);
-      } else {
-        // unknown shape — leave as-is
-        console.warn("room-users payload shape unknown:", payload);
-      }
-    });
+  socket.on("connect", () => console.log("✅ Socket connected:", socket.id));
+  socket.on("connect_error", (err) => console.log("❌ Connection error:", err.message));
+  console.log("BASE_URL is:", BASE_URL);
 
-    socket.on("user-joined", (userName) => {
-      setMessages((prev) => [...prev, `${userName} joined`]);
-    });
-    socket.on("user-left", (userName) => {
-      setMessages((prev) => [...prev, `${userName} left`]);
-    });
+  const handleConnect = () => {
+    const resolvedName = stateName || localStorage.getItem("username") || `Guest-${socket.id?.slice(0, 5)}`;
+    setName(resolvedName);
+     
+     console.log("roomId:", roomId);
+    console.log("resolvedName:", resolvedName);
+    console.log("stateName:", stateName);
+    console.log("localStorage username:", localStorage.getItem("username"));
+    if (roomId && resolvedName) {
+      socket.emit("join-room", { roomId, name: resolvedName });
+      setJoined(true);
+    }
+  };
 
-    return () => {
-      socket.off("code-update");
-      socket.off("language-update");
-      socket.off("room-users");
-      socket.off("user-joined");
-      socket.off("user-left");
-    };
-  }, []);
+  socket.on("connect", handleConnect);
+  socket.on("code-update", setCode);
+  socket.on("language-update", setLanguage);
+  socket.on("room-users", (payload) => {
+    if (Array.isArray(payload)) {
+      setRoomUsers(payload);
+      setUsersCount(payload.length);
+    }
+  });
+  socket.on("user-joined", (userName) =>
+    setMessages((prev) => [...prev, `${userName} joined`])
+  );
+  socket.on("user-left", (userName) =>
+    setMessages((prev) => [...prev, `${userName} left`])
+  );
+
+  if (socket.connected) handleConnect();
+
+  return () => {
+    socket.disconnect(); // ✅ cleanly kill socket when leaving page
+  };
+}, []);
+ 
 
   // // If an entry page provided name and roomId, auto-join on mount
   // useEffect(() => {
@@ -110,12 +119,12 @@ function RoomPage({  isDark , setIsDark }) {
   //   // eslint-disable-next-line react-hooks/exhaustive-deps
   // }, [initialRoomId, initialName]);
 
-  useEffect(() => {
-  if (!joined && roomId && name.trim().length > 0) {
-    socket.emit("join-room", { roomId, name });
-    setJoined(true);
-  }
-}, [roomId, name, joined]);
+//   useEffect(() => {
+//   if (!joined && roomId && name.trim().length > 0) {
+//     socket.emit("join-room", { roomId, name });
+//     setJoined(true);
+//   }
+// }, [roomId, name, joined]);
 
 
 
@@ -161,7 +170,7 @@ const evaluateWithAI = async () => {
   const problemDescription = "Analyze the code and infer the problem automatically.";
   setOutput("AI evaluating...");
   try {
-    const res = await axios.post("https://collabcode-ctmq.onrender.com/api/evaluate", {
+    const res = await axios.post(`${BASE_URL}/api/evaluate`, {
       language,
       code,
       problem: problemDescription
@@ -367,14 +376,14 @@ setShowAIWindow(true);
       clearErrorDecorations();
     }
 
-    if (joined) socket.emit("code-change", { roomId, code: newCode });
+    if (joined) socketRef.current.emit("code-change", { roomId, code: newCode });
   };
 
   const handleLanguageChange = (e) => {
     const newLang = e.target.value;
     setLanguage(newLang);
     clearErrorDecorations();
-    if (joined) socket.emit("language-change", { roomId, language: newLang });
+    if (joined) socketRef.current.emit("language-change", { roomId, language: newLang });
   };
 
   // ------------------ FILE HANDLING ------------------
@@ -398,7 +407,7 @@ const uploadFile = () => {
 
         // broadcast to room
         if (joined) {
-          socket.emit("code-change", {
+          socketRef.current.emit("code-change", {
             roomId,
             code: uploaded,
           });
@@ -432,7 +441,7 @@ const uploadFile = () => {
     clearErrorDecorations();
 
     try {
-      const res = await axios.post("https://collabcode-ctmq.onrender.com/api/execute", { language, code, stdin });
+      const res = await axios.post(`${BASE_URL}/api/execute`, { language, code, stdin });
       const outputText = res.data.stdout || res.data.stderr || "No output";
       setOutput(outputText);
 
