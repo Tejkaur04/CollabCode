@@ -53,7 +53,9 @@ export default function LandingPage() {
     google.accounts.id.renderButton(document.getElementById("google-btn"), {
       theme: "filled_blue",
       size: "large",
-      width: "100%",
+      width: "90%",
+
+
     });
   }, [modalOpen]);
 
@@ -695,7 +697,7 @@ header {
 }
 
 .google-btn {
-  padding: 1rem 1rem 1rem 7rem;
+  padding: 1rem 1rem 1rem 1rem;
   display: flex;
   align-items: center;
   justify-content: center;
