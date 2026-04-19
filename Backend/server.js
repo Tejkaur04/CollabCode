@@ -11,7 +11,7 @@ const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server, { cors: { origin: "https://collab-code-virid.vercel.app/" } });
+const io = new Server(server, { cors: { origin: "https://collab-code-virid.vercel.app" } });
 
 // ----------------- Middleware -----------------
 app.use(cors());
@@ -259,6 +259,11 @@ socket.on("language-change", ({ roomId, language }) => {
     }
     console.log("User disconnected:", socket.id);
   });
+});
+
+
+app.get("/", (req, res) => {
+  res.send("Backend is running 🚀");
 });
 
 // ----------------- Start Server -----------------
