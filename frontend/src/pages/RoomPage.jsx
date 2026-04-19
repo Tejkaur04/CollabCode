@@ -73,10 +73,10 @@ useEffect(() => {
     const resolvedName = stateName || localStorage.getItem("username") || `Guest-${socket.id?.slice(0, 5)}`;
     setName(resolvedName);
      
-     console.log("roomId:", roomId);
-    console.log("resolvedName:", resolvedName);
-    console.log("stateName:", stateName);
-    console.log("localStorage username:", localStorage.getItem("username"));
+    //  console.log("roomId:", roomId);
+    // console.log("resolvedName:", resolvedName);
+    // console.log("stateName:", stateName);
+    // console.log("localStorage username:", localStorage.getItem("username"));
     if (roomId && resolvedName) {
       socket.emit("join-room", { roomId, name: resolvedName });
       setJoined(true);
